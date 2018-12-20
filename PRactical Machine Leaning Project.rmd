@@ -1,0 +1,130 @@
+---
+title: "Course project"
+author: "Vince Jethro Alba"
+date: "December 21, 2018"
+output: html_document
+---
+#Practical Machine Learning Course Project
+##Valba
+##December 19, 2018
+
+##Background
+###Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: [http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har] (see the section on the Weight Lifting Exercise Dataset).
+
+###Subjects were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+###* Exactly according to the specification (Class A)
+###* Throwing the elbows to the front (Class B) - mistake
+###* Lifting the dumbbell only halfway (Class C) - mistake
+###* Lowering the dumbbell only halfway (Class D) - mistake
+###* Throwing the hips to the front (Class E) - mistake
+
+###Accelerometers were located on
+###1. belt
+###2. forearm
+###3. arm
+
+##Loading the necessary packages
+```{r, results="hide"}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(RGtk2)
+library(rattle)
+library(randomForest)
+```
+
+##Loading the datasets
+```{r}
+init_org_training_data <- read.csv("train_url.csv")
+init_org_testing_data <- read.csv("test_url.csv")
+dim(init_org_training_data)
+```
+
+##Data manipulation
+```{r, results="hide"}
+non_zero_var <- nearZeroVar(init_org_training_data)
+
+
+org_training_data <- init_org_training_data[,-non_zero_var]
+org_testing_data <- init_org_testing_data[,-non_zero_var]
+
+dim(org_training_data)
+
+na_val_col <- sapply(org_training_data, function(x) mean(is.na(x))) > 0.95
+
+org_training_data <- org_training_data[,na_val_col == FALSE]
+org_testing_data <- org_testing_data[,na_val_col == FALSE]
+
+dim(org_training_data)
+
+dim(org_testing_data)
+
+org_training_data <- org_training_data[,8:59]
+org_testing_data <- org_testing_data[,8:59]
+
+dim(org_training_data)
+
+dim(org_testing_data)
+```
+
+##Data partitioning
+```{r}
+inTrain <- createDataPartition(org_training_data$classe, p=0.6, list=FALSE)
+training <- org_training_data[inTrain,]
+testing <- org_training_data[-inTrain,]
+
+dim(training)
+```
+
+##1. Decision Tree Model
+```{r}
+DT_modfit <- train(classe ~ ., data = training, method="rpart")
+```
+
+###Predictions using the model
+```{r}
+DT_prediction <- predict(DT_modfit, testing)
+DT_pred_conf <-confusionMatrix(DT_prediction, testing$classe)
+DT_pred_conf 
+```
+
+###Plotting it
+```{r}
+rpart.plot(DT_modfit$finalModel, roundint=FALSE)
+```
+
+##2. Random Fit model
+```{r}
+RF_modfit <- train(classe ~ ., data = training, method = "rf", ntree = 100)
+```
+
+###Prediction in terms of Random Forest Model
+```{r}
+RF_prediction <- predict(RF_modfit, testing)
+RF_pred_conf <- confusionMatrix(RF_prediction, testing$classe)
+RF_pred_conf
+```
+
+##Ploting it
+```{r}
+plot(RF_pred_conf$table, col = RF_pred_conf$byClass, 
+     main = paste("Random Forest - Accuracy Level =",
+                  round(RF_pred_conf$overall['Accuracy'], 4)))
+```
+
+##3. Determining accuracy
+```{r}
+RF_pred_conf$overall
+DT_pred_conf$overall
+```
+
+#Conclusion
+###After checking the Overall Statistics data, the Random Forest model has definitely more accuracy. ence we will be selecting Random Forest model for final prediction from org_testing_data .
+
+##Final Prediction- Applying selected model on the Test Data
+```{r}
+Final_RF_prediction <- predict(RF_modfit, org_testing_data )
+Final_RF_prediction
+```
+
